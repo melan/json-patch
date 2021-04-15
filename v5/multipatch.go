@@ -76,6 +76,13 @@ func (m *multiPatch) Document() ([]byte, error) {
 
 func (m *multiPatch) Get(path string) Result {
 	con, key := findObject(&m.pd, path, m.defaultApplyOptions)
+	if con == nil {
+		return &result{
+			node:   nil,
+			exists: false,
+		}
+	}
+
 	node, err := con.get(key, m.defaultApplyOptions)
 
 	if err != nil {
@@ -87,7 +94,7 @@ func (m *multiPatch) Get(path string) Result {
 
 	return &result{
 		node:   node,
-		exists: true,
+		exists: node != nil,
 	}
 }
 
@@ -97,7 +104,7 @@ type result struct {
 }
 
 func (r result) IsArray() bool {
-	return r.exists && r.node.tryAry()
+	return r.exists && (r.node.which == eAry || r.node.tryAry())
 }
 
 func (r result) Array() []Result {
@@ -118,7 +125,7 @@ func (r result) Array() []Result {
 }
 
 func (r result) IsMap() bool {
-	return r.exists && r.node.tryDoc()
+	return r.exists && (r.node.which == eDoc || r.node.tryDoc())
 }
 
 func (r result) Map() map[string]Result {
