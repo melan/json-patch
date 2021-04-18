@@ -24,6 +24,8 @@ type Result interface {
 	IsBool() bool
 	Bool() bool
 	Exists() bool
+	IsEmpty() bool
+	JSON() string
 }
 
 type multiPatch struct {
@@ -104,7 +106,7 @@ type result struct {
 }
 
 func (r result) IsArray() bool {
-	return r.exists && (r.node.which == eAry || r.node.tryAry())
+	return r.exists && (r.node.which == eAry || r.node.which == eRaw && r.node.tryAry())
 }
 
 func (r result) Array() []Result {
@@ -125,7 +127,7 @@ func (r result) Array() []Result {
 }
 
 func (r result) IsMap() bool {
-	return r.exists && (r.node.which == eDoc || r.node.tryDoc())
+	return r.exists && (r.node.which == eDoc || r.node.which == eRaw && r.node.tryDoc())
 }
 
 func (r result) Map() map[string]Result {
@@ -264,4 +266,34 @@ func (r result) Bool() bool {
 
 func (r result) Exists() bool {
 	return r.exists
+}
+
+func (r result) IsEmpty() bool {
+	if !r.Exists() {
+		return true
+	}
+
+	switch r.node.which {
+	case eRaw:
+		return r.node.raw == nil || len(*r.node.raw) == 0
+	case eDoc:
+		return r.node.doc == nil || len(r.node.doc.obj) == 0
+	case eAry:
+		return r.node.ary == nil || len(r.node.ary) == 0
+	default:
+		return true
+	}
+}
+
+func (r result) JSON() string {
+	if !r.Exists() {
+		return ""
+	}
+
+	res, err := r.node.MarshalJSON()
+	if err != nil {
+		return ""
+	}
+
+	return string(res)
 }
